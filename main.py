@@ -4,23 +4,24 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
+import secrets
+
 import time
 
 CHROMEDRIVER_PATH = 'C:\Program Files (x86)\chromedriver.exe'
 driver = webdriver.Chrome(CHROMEDRIVER_PATH)
-USERNAME = "yifox95333@sanizr.com"
-PASSWORD = "definitelynotabot"
+
 
 
 def main():
     webscraper = WebScraper(driver)
     webscraper.get_url("https://www.instagram.com/")
 
-    login = Login(webscraper, USERNAME, PASSWORD)
+    login = Login(webscraper, secrets.USERNAME, secrets.PASSWORD)
     login.signin()
 
     account = Account(webscraper)
-    account.get_profile("flyingpiggy._")
+    account.get_profile("liwei.y_")
 
     name = account.get_name()
     print(name)
@@ -32,12 +33,35 @@ def main():
     print("You have {}".format(following_count))
 
     followers = account.get_followers_or_following_list("followers")
-
     following = account.get_followers_or_following_list("following")
 
     non_followers = list(filter(lambda x: x not in followers, following))
     
     print(non_followers)
+
+
+
+class WebScraper():
+    def __init__(self, driver):
+        self.driver = driver
+
+    def get_url(self, url):
+        self.driver.get(url)
+
+    def get_selector(self, selector, isMultiple=False):
+        selector = self.wait(selector, isMultiple)
+        return selector
+
+    def wait(self, selector, isMultiple=False):
+        if isMultiple == True:
+            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_all_elements_located((By.CSS_SELECTOR, selector)))
+        else:
+            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, selector)))
+
+    def execute_script(self, script, selector):
+        return self.driver.execute_script(script, selector)
+
+
 
 class Account():
     def __init__(self, webscraper):
@@ -71,11 +95,11 @@ class Account():
         popup_selector = self.webscraper.get_selector('body > div.RnEpo.Yx5HN > div > div > div.isgrP')
 
         last_height = self.webscraper.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", popup_selector)
+
         while True:
             self.webscraper.execute_script("arguments[0].scrollTo(0, document.getElementsByClassName('isgrP')[0].scrollHeight)", popup_selector)
-
             time.sleep(0.5)            
-            new_height = self.webscraper.driver.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", popup_selector)
+            new_height = self.webscraper.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", popup_selector)
             if new_height == last_height:
                 break
             
@@ -92,28 +116,6 @@ class Account():
         return the_list
 
 
-class WebScraper():
-    def __init__(self, driver):
-        self.driver = driver
-
-    def get_url(self, url):
-        self.driver.get(url)
-
-
-    def get_selector(self, selector, isMultiple=False):
-        selector = self.wait(selector, isMultiple)
-        return selector
-
-    
-
-    def wait(self, selector, isMultiple=False):
-        if isMultiple == True:
-            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_all_elements_located((By.CSS_SELECTOR, selector)))
-        else:
-            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, selector)))
-
-    def execute_script(self, script, selector):
-        self.driver.execute_script(script, selector)
 
 class Login():
     def __init__(self, webscraper, username, password):
@@ -132,7 +134,6 @@ class Login():
         button_selector.click()
 
         self.webscraper.wait("#react-root > section > main > div > div > div > section > div > div.olLwo")
-
 
 if __name__ == '__main__':
     main()
