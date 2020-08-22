@@ -13,76 +13,125 @@ PASSWORD = "definitelynotabot"
 
 
 def main():
-    driver.get("https://www.instagram.com/")
+    webscraper = WebScraper(driver)
+    webscraper.get_url("https://www.instagram.com/")
 
-    login = Login(driver, USERNAME, PASSWORD)
+    login = Login(webscraper, USERNAME, PASSWORD)
     login.signin()
+
+    account = Account(webscraper)
+    account.get_profile("flyingpiggy._")
+
+    name = account.get_name()
+    print(name)
+
+    followers_count = account.get_followers_or_following_count("followers")
+    print("You have {}".format(followers_count))
+
+    following_count = account.get_followers_or_following_count("following")
+    print("You have {}".format(following_count))
+
+    followers = account.get_followers_or_following_list("followers")
+
+    following = account.get_followers_or_following_list("following")
+
+    non_followers = list(filter(lambda x: x not in followers, following))
     
-    account = Account(driver)
-    account.get_profile("liwei.y_")
-    account.get_followers_list()
+    print(non_followers)
 
 class Account():
-    def __init__(self, driver):
-        self.driver = driver
+    def __init__(self, webscraper):
+        self.webscraper = webscraper
 
     def get_profile(self, username):
-        self.driver.get("https://www.instagram.com/{}".format(username))
+        self.webscraper.get_url("https://www.instagram.com/{}".format(username))
 
-    def get_followers_count(self):
-        followers_selector = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a')))
-        return followers_selector.text
+    def get_name(self):
+        selector = self.webscraper.get_selector('#react-root > section > main > div > header > section > div.-vDIg > h1')
+        return selector.text
 
-    def get_followers_list(self):
-        followers_selector = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a')))
-        followers_selector.click()
+    def get_followers_or_following_count(self, list_type):
+        selector = ""
+        if list_type == "followers":
+            selector = self.webscraper.get_selector('#react-root > section > main > div > header > section > ul > li:nth-child(2) > a')
+        if list_type == "following":
+            selector = self.webscraper.get_selector('#react-root > section > main > div > header > section > ul > li:nth-child(3) > a')
 
-        followers_popup = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, 'body > div.RnEpo.Yx5HN > div > div > div.isgrP')))
+        return selector.text
 
-        last_height = driver.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", followers_popup)
+    def get_followers_or_following_list(self, list_type):
+        selector = ""
+        if list_type == "followers":
+            selector = self.webscraper.get_selector('#react-root > section > main > div > header > section > ul > li:nth-child(2) > a')
+        if list_type == "following":
+            selector = self.webscraper.get_selector('#react-root > section > main > div > header > section > ul > li:nth-child(3) > a')
+
+        selector.click()
+
+        popup_selector = self.webscraper.get_selector('body > div.RnEpo.Yx5HN > div > div > div.isgrP')
+
+        last_height = self.webscraper.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", popup_selector)
         while True:
-            driver.execute_script("arguments[0].scrollTo(0, document.getElementsByClassName('isgrP')[0].scrollHeight)", followers_popup)
+            self.webscraper.execute_script("arguments[0].scrollTo(0, document.getElementsByClassName('isgrP')[0].scrollHeight)", popup_selector)
 
             time.sleep(0.5)            
-            new_height = driver.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", followers_popup)
-            print(new_height)
+            new_height = self.webscraper.driver.execute_script("return document.getElementsByClassName('isgrP')[0].scrollHeight", popup_selector)
             if new_height == last_height:
                 break
             
             last_height = new_height
 
-        followers = []
-        follower_elements = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_all_elements_located((By.CSS_SELECTOR, 'body > div.RnEpo.Yx5HN > div > div > div.isgrP > ul > div > li > div > div.t2ksc > div.enpQJ > div.d7ByH > span > a')))
-        for follower_item in follower_elements:
-            followers.append(follower_item.text)
+        the_list = []
+        the_list_elements = self.webscraper.get_selector('body > div.RnEpo.Yx5HN > div > div > div.isgrP > ul > div > li > div > div.t2ksc > div.enpQJ > div.d7ByH > span > a', True)
+        for element in the_list_elements:
+            the_list.append(element.text)
 
-    def get_followings_count(self):
-        followings_selector = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, '#react-root > section > main > div > header > section > ul > li:nth-child(3) > a')))
-        return followings_selector
+        close_selector = self.webscraper.get_selector("body > div.RnEpo.Yx5HN > div > div > div:nth-child(1) > div > div:nth-child(3) > button > div")
+        close_selector.click()
 
-    def get_followings_list(self):
-        followings_selector = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, '#react-root > section > main > div > header > section > ul > li:nth-child(3) > a')))
-        followings_selector.click()
+        return the_list
 
 
+class WebScraper():
+    def __init__(self, driver):
+        self.driver = driver
+
+    def get_url(self, url):
+        self.driver.get(url)
+
+
+    def get_selector(self, selector, isMultiple=False):
+        selector = self.wait(selector, isMultiple)
+        return selector
+
+    
+
+    def wait(self, selector, isMultiple=False):
+        if isMultiple == True:
+            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_all_elements_located((By.CSS_SELECTOR, selector)))
+        else:
+            return WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, selector)))
+
+    def execute_script(self, script, selector):
+        self.driver.execute_script(script, selector)
 
 class Login():
-    def __init__(self, driver, username, password):
-        self.driver = driver
+    def __init__(self, webscraper, username, password):
+        self.webscraper = webscraper
         self.username = username
         self.password = password
     
     def signin(self):
-        username_selector = WebDriverWait(self.driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "#loginForm > div > div:nth-child(1) > div > label > input")))
+        username_selector = self.webscraper.get_selector("#loginForm > div > div:nth-child(1) > div > label > input")
         username_selector.send_keys(self.username)
-        username_selector.send_keys(Keys.RETURN)
 
-        password_selector = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "#loginForm > div > div:nth-child(2) > div > label > input")))
+        password_selector = self.webscraper.get_selector("#loginForm > div > div:nth-child(2) > div > label > input")
         password_selector.send_keys(self.password)
-        password_selector.send_keys(Keys.RETURN)
 
-        WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "#react-root > section > main > div > div > div > section > div > div.olLwo")))
+        button_selector = self.webscraper.get_selector("#loginForm > div > div:nth-child(3) > button > div")
+        button_selector.click()
 
+        self.webscraper.wait("#react-root > section > main > div > div > div > section > div > div.olLwo")
 
 
 if __name__ == '__main__':
