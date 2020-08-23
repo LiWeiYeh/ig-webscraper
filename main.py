@@ -21,7 +21,7 @@ def main():
     login.signin()
 
     account = Account(webscraper)
-    account.get_profile("liwei.y_")
+    account.go_to_profile("liwei.y_")
 
     name = account.get_name()
     print(name)
@@ -32,12 +32,19 @@ def main():
     following_count = account.get_followers_or_following_count("following")
     print("You have {}".format(following_count))
 
-    followers = account.get_followers_or_following_list("followers")
-    following = account.get_followers_or_following_list("following")
+    # followers = account.get_followers_or_following_list("followers")
+    # following = account.get_followers_or_following_list("following")
 
-    non_followers = list(filter(lambda x: x not in followers, following))
+    # non_followers = list(filter(lambda x: x not in followers, following))
     
-    print(non_followers)
+    # print(non_followers)
+
+    # account.go_to_messaging_page()
+    # account.send_message(non_followers)
+
+    print("driver quitting...")
+    driver.quit()
+
 
 
 
@@ -67,7 +74,7 @@ class Account():
     def __init__(self, webscraper):
         self.webscraper = webscraper
 
-    def get_profile(self, username):
+    def go_to_profile(self, username):
         self.webscraper.get_url("https://www.instagram.com/{}".format(username))
 
     def get_name(self):
@@ -115,7 +122,20 @@ class Account():
 
         return the_list
 
+    def go_to_messaging_page(self):
+        selector = self.webscraper.get_selector("#react-root > section > main > div > header > section > div.nZSzR > div._862NM > div > button")
+        selector.click()
 
+        close_selector = self.webscraper.get_selector("body > div.RnEpo.Yx5HN > div > div > div > div.mt3GC > button.aOOlW.HoLwm")
+        close_selector.click()
+
+    def send_message(self, message):
+        print("sending msg...")
+        selector = self.webscraper.get_selector("#react-root > section > div > div.Igw0E.IwRSH.eGOV_._4EzTm > div > div > div.DPiy6.Igw0E.IwRSH.eGOV_.vwCYk > div.uueGX > div > div.Igw0E.IwRSH.eGOV_._4EzTm > div > div > div.Igw0E.IwRSH.eGOV_.vwCYk.ItkAi > textarea")
+        selector.click()
+        selector.send_keys(str(message))
+        selector.send_keys(Keys.RETURN)
+        print("message sent!")
 
 class Login():
     def __init__(self, webscraper, username, password):
